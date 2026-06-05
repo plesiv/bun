@@ -14,6 +14,7 @@ import http, {
   createServer,
   get,
   globalAgent,
+  IncomingMessage,
   OutgoingMessage,
   request,
   Server,
@@ -26,7 +27,7 @@ import type { AddressInfo } from "node:net";
 import { connect, createServer as createNetServer } from "node:net";
 import { tmpdir } from "node:os";
 import * as path from "node:path";
-import { PassThrough } from "node:stream";
+import { PassThrough, Writable } from "node:stream";
 import tunnel from "tunnel";
 import { run as runHTTPProxyTest } from "./node-http-proxy.js";
 const { describe, expect, it, beforeAll, afterAll, createDoneDotAll, mock, test } = createTest(import.meta.path);
@@ -2546,8 +2547,6 @@ it("close-delimited streaming writes carry raw bytes with no chunk framing artif
 it("standalone ServerResponse flushes the header block before a non-chunked Buffer body", async () => {
   // assignSocket() + explicit Content-Length + Buffer body: _send buffers the
   // rendered header in outputData; _writeRaw must flush it ahead of the body.
-  const { Writable } = require("node:stream");
-  const { IncomingMessage } = require("node:http");
   const chunks: Buffer[] = [];
   const ws = new Writable({
     write(c, e, cb) {
