@@ -1930,11 +1930,13 @@ ServerResponse.prototype.end = function (chunk, encoding, callback) {
     return this;
   }
 
-  if (chunk && this[headerStateSymbol] === NodeHTTPHeaderState.none) {
+  if (this[headerStateSymbol] === NodeHTTPHeaderState.none) {
     // Implicit header: Node's write_() runs _implicitHeader() (which derives
-    // _hasBody from the status code) before its !_hasBody discard. writeHead
-    // was never called here, so derive it now or a body written to a 204/304
-    // would reach the wire chunk-framed with no terminator.
+    // _hasBody from the status code) unconditionally before its !_hasBody
+    // discard - not gated on the chunk, or an empty first write would flip
+    // the header state without deriving _hasBody and a later body write to
+    // a 204/304 would reach the wire chunk-framed with no terminator.
+    // updateHasBody only ever clears _hasBody, so this is idempotent.
     updateHasBody(this, this.statusCode);
   }
   if (chunk && !this._hasBody) {
@@ -2067,11 +2069,13 @@ ServerResponse.prototype.write = function (chunk, encoding, callback) {
     return OutgoingMessagePrototype.write.$call(this, chunk, encoding, callback);
   }
 
-  if (chunk && this[headerStateSymbol] === NodeHTTPHeaderState.none) {
+  if (this[headerStateSymbol] === NodeHTTPHeaderState.none) {
     // Implicit header: Node's write_() runs _implicitHeader() (which derives
-    // _hasBody from the status code) before its !_hasBody discard. writeHead
-    // was never called here, so derive it now or a body written to a 204/304
-    // would reach the wire chunk-framed with no terminator.
+    // _hasBody from the status code) unconditionally before its !_hasBody
+    // discard - not gated on the chunk, or an empty first write would flip
+    // the header state without deriving _hasBody and a later body write to
+    // a 204/304 would reach the wire chunk-framed with no terminator.
+    // updateHasBody only ever clears _hasBody, so this is idempotent.
     updateHasBody(this, this.statusCode);
   }
   if (chunk && !this._hasBody) {
