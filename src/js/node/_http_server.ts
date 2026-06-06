@@ -1864,6 +1864,13 @@ ServerResponse.prototype.writeProcessing = function (cb) {
 };
 
 ServerResponse.prototype.writeContinue = function (cb) {
+  if (!this[kHandle]) {
+    // Standalone path: route through _writeRaw like Node.js (and like the
+    // writeProcessing/writeEarlyHints/writeInformation siblings) so the
+    // 100 Continue line reaches the assigned socket.
+    this._sent100 = true;
+    return this._writeRaw("HTTP/1.1 100 Continue\r\n\r\n", "ascii", cb);
+  }
   this.socket[kHandle]?.response?.writeContinue();
   this._sent100 = true;
   cb?.();

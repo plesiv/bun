@@ -2974,3 +2974,27 @@ it("HEAD response with explicit writeHead(200) carries no body bytes", async () 
     server.close();
   }
 });
+
+it("standalone ServerResponse writeContinue reaches the assigned socket", async () => {
+  // writeContinue must route through _writeRaw on the no-handle path like
+  // its writeProcessing/writeEarlyHints siblings (pre-fix it was a no-op).
+  const chunks: Buffer[] = [];
+  const ws = new Writable({
+    write(c, e, cb) {
+      chunks.push(Buffer.from(c));
+      cb();
+    },
+  });
+  const res = new ServerResponse(new IncomingMessage(null as any));
+  res.assignSocket(ws);
+  res.writeContinue();
+  expect(Buffer.concat(chunks).toString()).toBe("HTTP/1.1 100 Continue\r\n\r\n");
+  expect(res._sent100).toBe(true);
+
+  res.end("hello");
+  await once(res, "finish");
+  const out = Buffer.concat(chunks).toString();
+  expect(out).toStartWith("HTTP/1.1 100 Continue\r\n\r\n");
+  expect(out).toContain("HTTP/1.1 200 OK\r\n");
+  expect(out.indexOf("HTTP/1.1 200 OK")).toBeGreaterThan(out.indexOf("100 Continue"));
+});
