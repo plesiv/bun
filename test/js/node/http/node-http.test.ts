@@ -3071,3 +3071,49 @@ it("req.upgrade is true inside the 'connect' listener", async () => {
     server.close();
   }
 });
+
+it("plain HEAD with flushHeaders carries no auto-chunked framing", async () => {
+  // No explicit framing headers: the native flushHeaders must not enter
+  // chunked mode for a HEAD response, and end() must not write a terminator.
+  const server = createServer((req, res) => {
+    if (req.method === "HEAD") {
+      res.flushHeaders();
+      res.end();
+    } else {
+      res.end("world");
+    }
+  });
+  try {
+    server.listen(0, "127.0.0.1");
+    await once(server, "listening");
+    const { port } = server.address() as AddressInfo;
+
+    const out = await new Promise<string>((resolve, reject) => {
+      const socket = connect(port, "127.0.0.1");
+      let data = "";
+      let sentSecond = false;
+      socket.on("data", chunk => {
+        data += chunk;
+        if (!sentSecond && data.includes("\r\n\r\n")) {
+          sentSecond = true;
+          socket.write("GET / HTTP/1.1\r\nHost: x\r\n\r\n");
+        }
+        if (sentSecond && data.endsWith("world")) {
+          socket.end();
+          resolve(data);
+        }
+      });
+      socket.on("error", reject);
+      socket.write("HEAD / HTTP/1.1\r\nHost: x\r\n\r\n");
+    });
+
+    const first = out.slice(0, out.indexOf("HTTP/1.1 200", 10));
+    expect(first).not.toContain("Transfer-Encoding");
+    expect(first).toEndWith("\r\n\r\n");
+    expect(first).not.toContain("0\r\n\r\n");
+    // The keep-alive connection still parses the next response.
+    expect(out).toEndWith("\r\n\r\nworld");
+  } finally {
+    server.close();
+  }
+});

@@ -1569,12 +1569,14 @@ function renderNativeHeaders(res) {
     }
   }
 
-  if (res._hasBody === false && res[kOutHeaders]?.["transfer-encoding"] !== undefined) {
-    // A no-body response (HEAD) with an explicit Transfer-Encoding header:
-    // the native side only knows 204/304 from the status line, so signal
-    // no-body explicitly - the header is advertised but the body framing
-    // (terminating chunk included) is suppressed, like Node.js's
-    // `_hasBody && chunkedEncoding` gate.
+  if (res._hasBody === false) {
+    // A method-based no-body response (HEAD): the native side only knows
+    // 204/304 from the status line, so signal no-body explicitly. Any
+    // user-set framing headers are still advertised, but the body framing
+    // itself (auto Content-Length/Transfer-Encoding and the terminating
+    // chunk) is suppressed, like Node.js's `_hasBody && chunkedEncoding`
+    // gate - a HEAD response ends at the first empty line whatever headers
+    // it carries (RFC 9112 6.3).
     flat.push("\u0000", "2");
   }
 
