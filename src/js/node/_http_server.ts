@@ -1072,12 +1072,14 @@ const NodeHTTPServerSocket = class Socket extends Duplex {
     // not yet finished (`resOnFinish` does `incoming.shift()`). Our
     // equivalent of "still in the queue" is `_httpMessage` being non-null:
     // `detachSocket()` (called from `res.end()` / on `"finish"`) clears it.
-    // Do NOT fall back to `this[kRequest]` here — that slot is never cleared,
-    // so falling back would abort the request on every keep-alive close even
-    // after a fully successful response, which races `req._dump()`'s
-    // nextTick and can surface as a spurious `"aborted"` (seen as flakes in
-    // the express `res.sendFile` suite where supertest closes the socket
-    // right after reading the body).
+    // Do NOT fall back to `this[kRequest]` here — `_httpMessage` is the
+    // canonical "response still attached" indicator. (`detachSocket()` now
+    // clears `kRequest` alongside `_httpMessage`, so the two agree after a
+    // finished response; historically `kRequest` was never cleared and the
+    // fallback aborted the request on every keep-alive close even after a
+    // fully successful response, racing `req._dump()`'s nextTick into a
+    // spurious `"aborted"` — seen as flakes in the express `res.sendFile`
+    // suite where supertest closes the socket right after reading the body.)
     //
     // Gate on `!req.destroyed` rather than `!req.complete`: a body-less GET
     // flips `complete` before the response is written, so an aborted
