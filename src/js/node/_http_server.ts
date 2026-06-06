@@ -74,6 +74,7 @@ const sendHelper = $newZigFunction("node_cluster_binding.zig", "sendHelperChild"
 const kServerResponse = Symbol("ServerResponse");
 const kRejectNonStandardBodyWrites = Symbol("kRejectNonStandardBodyWrites");
 const kChunkedEncoding = Symbol("kChunkedEncoding");
+const kShouldKeepAlive = Symbol("kShouldKeepAlive");
 const kOptimizeEmptyRequests = Symbol("kOptimizeEmptyRequests");
 const GlobalPromise = globalThis.Promise;
 const kEmptyBuffer = Buffer.alloc(0);
@@ -1520,10 +1521,14 @@ function renderNativeHeaders(res) {
   let closeDelimited = false;
   let forceChunked = false;
   if (res[kOutHeaders]?.["content-length"] === undefined && res[kOutHeaders]?.["transfer-encoding"] === undefined) {
-    if (res._removedTE) {
+    if (res._hasBody === false) {
+      // HEAD / 204 / 304 / 1xx: there is no body to delimit, so removing the
+      // framing headers must not close the connection (Node's _storeHeader
+      // checks !_hasBody before its close-delimited else-branch).
+    } else if (res._removedTE) {
       closeDelimited = true;
       res[kMustCloseConnection] = true;
-    } else if (res._removedContLen && res._hasBody !== false) {
+    } else if (res._removedContLen) {
       forceChunked = true;
     }
   }
@@ -2254,12 +2259,15 @@ ServerResponse.prototype.assignSocket = function (socket) {
   this._flush();
 };
 
+// Like chunkedEncoding: the native-handle path reads the handle's flag, but
+// the standalone path runs through _storeHeader, whose 204/304 handling
+// assigns shouldKeepAlive = false - that write needs real storage.
 Object.defineProperty(ServerResponse.prototype, "shouldKeepAlive", {
   get() {
-    return this[kHandle]?.shouldKeepAlive ?? true;
+    return this[kHandle]?.shouldKeepAlive ?? this[kShouldKeepAlive] ?? true;
   },
-  set(_value) {
-    // throw new Error('not implemented');
+  set(value) {
+    this[kShouldKeepAlive] = value;
   },
 });
 

@@ -2756,3 +2756,70 @@ it("caches the target's TLS session for proxy-tunneled https requests", async ()
     target.close();
   }
 });
+
+it("standalone ServerResponse answers 204 + explicit chunked TE with Connection: close", async () => {
+  // _storeHeader's 204/304 handling clears chunkedEncoding and sets
+  // shouldKeepAlive = false; the latter needs real storage on ServerResponse
+  // so the rendered header is Connection: close like Node.js.
+  const chunks: Buffer[] = [];
+  const ws = new Writable({
+    write(c, e, cb) {
+      chunks.push(Buffer.from(c));
+      cb();
+    },
+  });
+  const res = new ServerResponse(new IncomingMessage(null as any));
+  res.assignSocket(ws);
+  res.setHeader("Transfer-Encoding", "chunked");
+  res.writeHead(204);
+  res.end();
+  await once(res, "finish");
+
+  const out = Buffer.concat(chunks).toString();
+  expect(out).toStartWith("HTTP/1.1 204 No Content\r\n");
+  expect(out).toContain("Connection: close");
+  expect(out).not.toContain("keep-alive");
+  // chunkedEncoding was cleared, so no terminating chunk is emitted.
+  expect(out).toEndWith("\r\n\r\n");
+});
+
+it("removing transfer-encoding on a HEAD response keeps the connection alive", async () => {
+  // _hasBody === false means there is no body to close-delimit; Node leaves
+  // the connection open (its _storeHeader checks !_hasBody first).
+  const server = createServer((req, res) => {
+    res.removeHeader("transfer-encoding");
+    res.end("hello");
+  });
+  try {
+    server.listen(0, "127.0.0.1");
+    await once(server, "listening");
+    const { port } = server.address() as AddressInfo;
+
+    const out = await new Promise<string>((resolve, reject) => {
+      const socket = connect(port, "127.0.0.1");
+      let data = "";
+      let sentSecond = false;
+      socket.on("data", chunk => {
+        data += chunk;
+        if (!sentSecond && data.includes("\r\n\r\n")) {
+          sentSecond = true;
+          // The connection must still be usable for a normal GET.
+          socket.write("GET / HTTP/1.1\r\nHost: localhost\r\n\r\n");
+        }
+        if (sentSecond && data.endsWith("hello")) {
+          socket.end();
+          resolve(data);
+        }
+      });
+      socket.on("error", reject);
+      socket.write("HEAD / HTTP/1.1\r\nHost: localhost\r\n\r\n");
+    });
+
+    const first = out.slice(0, out.indexOf("HTTP/1.1 200", 10));
+    expect(first).toContain("Connection: keep-alive");
+    expect(first).not.toContain("Connection: close");
+    expect(out).toEndWith("\r\n\r\nhello");
+  } finally {
+    server.close();
+  }
+});
