@@ -3400,3 +3400,41 @@ it("the over-limit 503 advertises Connection: close, not keep-alive", async () =
     server.close();
   }
 });
+
+it("a non-200 CONNECT through a proxy that holds the connection open is destroyed client-side", async () => {
+  // cleanupAndPropagate deliberately defers destroy to req.onSocket for
+  // status-code tunnel failures; oncreate must forward the socket so
+  // onSocketNT actually destroys it - otherwise the proxy connection leaks
+  // until the proxy closes its side.
+  const proxySockets: import("node:net").Socket[] = [];
+  const proxy = createNetServer(socket => {
+    proxySockets.push(socket);
+    socket.on("error", () => {});
+    // Reply 407 and HOLD the connection open (no end()).
+    socket.once("data", () => {
+      socket.write("HTTP/1.1 407 Proxy Authentication Required\r\nContent-Length: 0\r\n\r\n");
+    });
+  });
+  try {
+    proxy.listen(0, "127.0.0.1");
+    await once(proxy, "listening");
+    const proxyPort = (proxy.address() as AddressInfo).port;
+
+    const agent = new https.Agent({ proxyEnv: { HTTPS_PROXY: `http://127.0.0.1:${proxyPort}` } });
+    const { promise: errored, resolve: onError } = Promise.withResolvers<any>();
+    const req = https.request({ host: "example.com", port: 443, path: "/", agent }, () => {});
+    req.on("error", onError);
+    req.end();
+
+    const err = await errored;
+    expect(err.code).toBe("ERR_PROXY_TUNNEL");
+    expect(err.statusCode).toBe(407);
+    // The client must close its end despite the proxy holding the socket.
+    expect(proxySockets.length).toBe(1);
+    await once(proxySockets[0], "close");
+    agent.destroy();
+  } finally {
+    for (const s of proxySockets) s.destroy();
+    proxy.close();
+  }
+});
