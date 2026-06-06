@@ -695,6 +695,10 @@ Server.prototype[kRealListen] = function (tls, port, host, socketPath, reusePort
             is_upgrade = !!server.shouldUpgradeCallback(http_req);
           }
         }
+        // Like Node.js's parserOnIncoming: req.upgrade is true inside the
+        // 'upgrade' listener and false for a declined upgrade that falls
+        // through to 'request'.
+        http_req.upgrade = is_upgrade;
         if (!is_upgrade) {
           if (canUseInternalAssignSocket) {
             // ~10% performance improvement in JavaScriptCore due to avoiding .once("close", ...) and removing a listener
@@ -1888,6 +1892,23 @@ ServerResponse.prototype.end = function (chunk, encoding, callback) {
     return this;
   }
 
+  if (!handle) {
+    // Read the storage directly - the `socket` getter auto-creates a
+    // FakeSocket and would make this condition always true.
+    if (this[fakeSocketSymbol] || this.outputData?.length || !this._header) {
+      // Standalone response writing through an assigned socket (or buffering
+      // until one is assigned): use the OutgoingMessage machinery. The
+      // original chunk passes through (mirroring write()): write_() has its
+      // own !_hasBody handling, including the rejectNonStandardBodyWrites
+      // throw, which the clearing below would bypass.
+      return OutgoingMessagePrototype.end.$call(this, chunk, encoding, callback);
+    }
+    if ($isCallable(callback)) {
+      process.nextTick(callback);
+    }
+    return this;
+  }
+
   if (chunk && !this._hasBody) {
     if (this[kRejectNonStandardBodyWrites]) {
       throw $ERR_HTTP_BODY_NOT_ALLOWED();
@@ -1895,20 +1916,6 @@ ServerResponse.prototype.end = function (chunk, encoding, callback) {
       // node.js just ignores the write in this case
       chunk = undefined;
     }
-  }
-
-  if (!handle) {
-    // Read the storage directly - the `socket` getter auto-creates a
-    // FakeSocket and would make this condition always true.
-    if (this[fakeSocketSymbol] || this.outputData?.length || !this._header) {
-      // Standalone response writing through an assigned socket (or buffering
-      // until one is assigned): use the OutgoingMessage machinery.
-      return OutgoingMessagePrototype.end.$call(this, chunk, encoding, callback);
-    }
-    if ($isCallable(callback)) {
-      process.nextTick(callback);
-    }
-    return this;
   }
 
   const headerState = this[headerStateSymbol];
@@ -2341,9 +2348,10 @@ function updateHasBody(response, statusCode) {
   // terminated by an empty line.
   if (statusCode === 204 || statusCode === 304 || (statusCode >= 100 && statusCode <= 199)) {
     response._hasBody = false;
-  } else {
-    response._hasBody = true;
   }
+  // No else: Node.js never sets _hasBody back to true here, so a HEAD
+  // request's response (set in the constructor) stays body-less whatever
+  // status writeHead() picks.
 }
 
 function emitServerSocketEOF(self, req) {

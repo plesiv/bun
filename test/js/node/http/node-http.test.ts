@@ -2874,3 +2874,103 @@ it("clientError after a kept-alive request reuses the connection's socket and un
     server.close();
   }
 });
+
+it("req.upgrade reflects the upgrade dispatch decision like Node.js", async () => {
+  // true inside the 'upgrade' listener; false for an Upgrade-carrying request
+  // that falls through to 'request' (no Connection: upgrade token here).
+  let upgradeValue: unknown = "unset";
+  let requestValue: unknown = "unset";
+  const { promise: sawUpgrade, resolve: onUpgrade } = Promise.withResolvers<void>();
+  const { promise: sawRequest, resolve: onRequest } = Promise.withResolvers<void>();
+  const server = createServer((req, res) => {
+    requestValue = req.upgrade;
+    res.end("ok");
+    onRequest();
+  });
+  server.on("upgrade", (req, socket) => {
+    upgradeValue = req.upgrade;
+    socket.end("HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
+    onUpgrade();
+  });
+  try {
+    server.listen(0, "127.0.0.1");
+    await once(server, "listening");
+    const { port } = server.address() as AddressInfo;
+
+    const s1 = connect(port, "127.0.0.1");
+    s1.on("error", () => {});
+    s1.write("GET / HTTP/1.1\r\nHost: x\r\nUpgrade: websocket\r\nConnection: upgrade\r\n\r\n");
+    await sawUpgrade;
+    s1.destroy();
+    expect(upgradeValue).toBe(true);
+
+    const s2 = connect(port, "127.0.0.1");
+    s2.on("error", () => {});
+    // Upgrade header without the Connection: upgrade token: normal dispatch.
+    s2.write("GET / HTTP/1.1\r\nHost: x\r\nUpgrade: websocket\r\n\r\n");
+    await sawRequest;
+    s2.destroy();
+    expect(requestValue).toBe(false);
+  } finally {
+    server.close();
+  }
+});
+
+it("standalone ServerResponse end() honors rejectNonStandardBodyWrites for no-body responses", async () => {
+  // Mirrors the write() fix: the original chunk must reach write_()'s
+  // !_hasBody handling so the reject option throws like Node.js.
+  const ws = new Writable({
+    write(c, e, cb) {
+      cb();
+    },
+  });
+  const res = new ServerResponse({ method: "HEAD" } as any, { rejectNonStandardBodyWrites: true } as any);
+  res.assignSocket(ws);
+  expect(() => res.end("body")).toThrow(
+    expect.objectContaining({
+      code: "ERR_HTTP_BODY_NOT_ALLOWED",
+    }),
+  );
+  ws.destroy();
+});
+
+it("HEAD response with explicit writeHead(200) carries no body bytes", async () => {
+  // writeHead() must not reset _hasBody for a HEAD request (Node only ever
+  // clears it); pre-fix the body bytes leaked onto the wire.
+  const server = createServer((req, res) => {
+    res.writeHead(200);
+    res.end("hello");
+  });
+  try {
+    server.listen(0, "127.0.0.1");
+    await once(server, "listening");
+    const { port } = server.address() as AddressInfo;
+
+    const out = await new Promise<string>((resolve, reject) => {
+      const socket = connect(port, "127.0.0.1");
+      let data = "";
+      let sentSecond = false;
+      socket.on("data", chunk => {
+        data += chunk;
+        if (!sentSecond && data.includes("\r\n\r\n")) {
+          sentSecond = true;
+          socket.write("GET / HTTP/1.1\r\nHost: x\r\n\r\n");
+        }
+        if (sentSecond && data.endsWith("hello")) {
+          socket.end();
+          resolve(data);
+        }
+      });
+      socket.on("error", reject);
+      socket.write("HEAD / HTTP/1.1\r\nHost: x\r\n\r\n");
+    });
+
+    const first = out.slice(0, out.indexOf("HTTP/1.1 200", 10));
+    expect(first).toStartWith("HTTP/1.1 200");
+    // No body on the HEAD response; the GET on the same connection has one.
+    expect(first).toEndWith("\r\n\r\n");
+    expect(out).toEndWith("\r\n\r\nhello");
+  } finally {
+    server.close();
+  }
+});
