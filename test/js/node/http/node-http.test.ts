@@ -3359,9 +3359,7 @@ it("Expect: 100-Continue matches case-insensitively like Node.js", async () => {
         }
       });
       socket.on("error", reject);
-      socket.write(
-        "POST / HTTP/1.1\r\nHost: x\r\nExpect: 100-Continue\r\nContent-Length: 5\r\n\r\n",
-      );
+      socket.write("POST / HTTP/1.1\r\nHost: x\r\nExpect: 100-Continue\r\nContent-Length: 5\r\n\r\n");
     });
 
     expect(out).toContain("HTTP/1.1 100 Continue");
