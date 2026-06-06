@@ -717,11 +717,16 @@ static void NodeHTTPServer__writeHead(
                 String value = headerValue.toWTFString(globalObject);
                 RETURN_IF_EXCEPTION(scope, void());
 
-                // node:http marks a close-delimited response (the user removed
-                // the framing headers) with a NUL-named sentinel pair instead
-                // of a real header.
+                // node:http marks framing decisions with a NUL-named sentinel
+                // pair instead of a real header: value "1" = close-delimited
+                // (the user removed the framing headers), value "2" = no body
+                // (HEAD - suppress all body framing like 204/304).
                 if (name.length() == 1 && name[0] == 0) {
-                    httpResponseData->closeDelimited = true;
+                    if (value == "2"_s) {
+                        httpResponseData->noBodyStatus = true;
+                    } else {
+                        httpResponseData->closeDelimited = true;
+                    }
                     continue;
                 }
 

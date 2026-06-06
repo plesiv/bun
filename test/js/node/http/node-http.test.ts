@@ -2998,3 +2998,76 @@ it("standalone ServerResponse writeContinue reaches the assigned socket", async 
   expect(out).toContain("HTTP/1.1 200 OK\r\n");
   expect(out.indexOf("HTTP/1.1 200 OK")).toBeGreaterThan(out.indexOf("100 Continue"));
 });
+
+it("HEAD response with explicit chunked TE carries no terminating chunk", async () => {
+  // RFC 9112 6.3: a HEAD response terminates at the first empty line
+  // whatever framing headers it advertises; a 0\r\n\r\n terminator would be
+  // parsed as the start of the next response on the keep-alive connection.
+  const server = createServer((req, res) => {
+    if (req.method === "HEAD") {
+      res.setHeader("Transfer-Encoding", "chunked");
+      res.end("hello");
+    } else {
+      res.end("world");
+    }
+  });
+  try {
+    server.listen(0, "127.0.0.1");
+    await once(server, "listening");
+    const { port } = server.address() as AddressInfo;
+
+    const out = await new Promise<string>((resolve, reject) => {
+      const socket = connect(port, "127.0.0.1");
+      let data = "";
+      let sentSecond = false;
+      socket.on("data", chunk => {
+        data += chunk;
+        if (!sentSecond && data.includes("\r\n\r\n")) {
+          sentSecond = true;
+          socket.write("GET / HTTP/1.1\r\nHost: x\r\n\r\n");
+        }
+        if (sentSecond && data.endsWith("world")) {
+          socket.end();
+          resolve(data);
+        }
+      });
+      socket.on("error", reject);
+      socket.write("HEAD / HTTP/1.1\r\nHost: x\r\n\r\n");
+    });
+
+    const first = out.slice(0, out.indexOf("HTTP/1.1 200", 10));
+    expect(first).toContain("Transfer-Encoding: chunked");
+    // Headers only - no terminating chunk after the empty line.
+    expect(first).toEndWith("\r\n\r\n");
+    expect(first).not.toContain("0\r\n\r\n");
+    // The keep-alive connection still parses the next response.
+    expect(out).toEndWith("\r\n\r\nworld");
+  } finally {
+    server.close();
+  }
+});
+
+it("req.upgrade is true inside the 'connect' listener", async () => {
+  let upgradeValue: unknown = "unset";
+  const { promise: sawConnect, resolve: onConnect } = Promise.withResolvers<void>();
+  const server = createServer((req, res) => res.end("ok"));
+  server.on("connect", (req, socket) => {
+    upgradeValue = req.upgrade;
+    socket.end("HTTP/1.1 200 Connection Established\r\n\r\n");
+    onConnect();
+  });
+  try {
+    server.listen(0, "127.0.0.1");
+    await once(server, "listening");
+    const { port } = server.address() as AddressInfo;
+
+    const socket = connect(port, "127.0.0.1");
+    socket.on("error", () => {});
+    socket.write("CONNECT example.com:443 HTTP/1.1\r\nHost: example.com:443\r\n\r\n");
+    await sawConnect;
+    socket.destroy();
+    expect(upgradeValue).toBe(true);
+  } finally {
+    server.close();
+  }
+});

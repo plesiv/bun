@@ -603,6 +603,9 @@ Server.prototype[kRealListen] = function (tls, port, host, socketPath, reusePort
             const { promise, resolve } = $newPromiseCapability(Promise);
             // Pass the pipelined data (head buffer) if any was received with the CONNECT request
             const head = connectHead ? connectHead : kEmptyBuffer;
+            // Node.js's parserOnIncoming: req.upgrade is true for CONNECT
+            // regardless of shouldUpgradeCallback.
+            http_req.upgrade = true;
             server.emit("connect", http_req, socket, head);
             // Attach the internal close listener after the user's "connect"
             // handler ran: Node.js hands the socket over with no listeners and
@@ -1564,6 +1567,15 @@ function renderNativeHeaders(res) {
     } else {
       flat.push("Connection", "close");
     }
+  }
+
+  if (res._hasBody === false && res[kOutHeaders]?.["transfer-encoding"] !== undefined) {
+    // A no-body response (HEAD) with an explicit Transfer-Encoding header:
+    // the native side only knows 204/304 from the status line, so signal
+    // no-body explicitly - the header is advertised but the body framing
+    // (terminating chunk included) is suppressed, like Node.js's
+    // `_hasBody && chunkedEncoding` gate.
+    flat.push("\u0000", "2");
   }
 
   if (closeDelimited) {

@@ -487,7 +487,7 @@ public:
          * chunked path instead of writing the raw body after the headers. */
         if ((httpResponseData->state & HttpResponseData<SSL>::HTTP_WROTE_TRANSFER_ENCODING_HEADER) &&
             !(httpResponseData->state & (HttpResponseData<SSL>::HTTP_WRITE_CALLED | HttpResponseData<SSL>::HTTP_WROTE_CONTENT_LENGTH_HEADER)) &&
-            !httpResponseData->fromAncientRequest) {
+            !httpResponseData->fromAncientRequest && !httpResponseData->noBodyStatus) {
             writeStatus(HTTP_200_OK);
             writeMark();
             Super::write("\r\n", 2);
