@@ -2738,16 +2738,16 @@ it("caches the target's TLS session for proxy-tunneled https requests", async ()
       },
     );
     req.on("error", reject);
-    const socketPromise = once(req, "socket");
     req.end();
-    const [tunneledSocket] = await socketPromise;
-    // The agent's caching listener must be on the tunneled target socket
-    // (pre-fix it sat on the proxy connection, which never emits 'session'
-    // for an HTTP proxy). Emitting the event here exercises that listener
-    // deterministically - the wrapped-TLS ticket delivery itself is async.
-    tunneledSocket.emit("session", Buffer.from("session-ticket"));
-    expect((agent as any)._sessionCache.list.length).toBe(1);
     await promise;
+    // The caching listener must sit on the tunneled target socket (pre-fix
+    // it sat on the proxy connection, which never emits 'session' for an
+    // HTTP proxy, so the cache stayed empty forever). The target's TLS 1.3
+    // ticket arrives asynchronously with the first data flight - await the
+    // cache filling with the real session.
+    while ((agent as any)._sessionCache.list.length === 0) {
+      await Bun.sleep(10);
+    }
 
     expect(connectSeen).toBe(true);
     agent.destroy();
