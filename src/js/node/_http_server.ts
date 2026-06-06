@@ -3,6 +3,7 @@ const EventEmitter: typeof import("node:events").EventEmitter = require("node:ev
 const { Duplex, Stream } = require("node:stream");
 const {
   _checkInvalidHeaderChar: checkInvalidHeaderChar,
+  continueExpression,
   validateHeaderName,
   validateHeaderValue,
 } = require("node:_http_common");
@@ -777,7 +778,10 @@ Server.prototype[kRealListen] = function (tls, port, host, socketPath, reusePort
           http_res.writeHead(400, { Connection: "close" });
           http_res.end();
         } else if (http_req.headers.expect !== undefined) {
-          if (http_req.headers.expect === "100-continue") {
+          // Case-insensitive, token-boundary match like Node's
+          // parserOnIncoming (RFC 7231 5.1.1: expectation values compare
+          // case-insensitively).
+          if (continueExpression.test(http_req.headers.expect)) {
             if (server.listenerCount("checkContinue") > 0) {
               server.emit("checkContinue", http_req, http_res);
             } else {
@@ -1548,7 +1552,14 @@ function renderNativeHeaders(res) {
     }
   }
 
-  if (!res._removedConnection && !hasConnection) {
+  if (res._removedConnection) {
+    // Node's _storeHeader: `this._last = !this.shouldKeepAlive` - no
+    // Connection header is written (the user removed it), but the socket
+    // still closes after 'finish' when shouldKeepAlive was cleared.
+    if (res.shouldKeepAlive === false) {
+      res[kMustCloseConnection] = true;
+    }
+  } else if (!hasConnection) {
     if (
       !defectiveNoBodyResponse &&
       !closeDelimited &&

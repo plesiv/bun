@@ -3299,3 +3299,75 @@ it("res.shouldKeepAlive = false renders Connection: close and ends the socket", 
     server.close();
   }
 });
+
+it("removeHeader('connection') with shouldKeepAlive = false still closes the socket on finish", async () => {
+  // Node's _storeHeader handles _removedConnection before the auto-header
+  // branch: no Connection header is written, but _last = !shouldKeepAlive
+  // still ends the socket.
+  const server = createServer((req, res) => {
+    res.removeHeader("connection");
+    res.shouldKeepAlive = false;
+    res.end("ok");
+  });
+  try {
+    server.listen(0, "127.0.0.1");
+    await once(server, "listening");
+    const { port } = server.address() as AddressInfo;
+
+    const out = await new Promise<string>((resolve, reject) => {
+      const socket = connect(port, "127.0.0.1");
+      let data = "";
+      socket.on("data", chunk => (data += chunk));
+      // The server must send FIN on its own; the client never half-closes.
+      socket.on("end", () => resolve(data));
+      socket.on("error", reject);
+      socket.write("GET / HTTP/1.1\r\nHost: x\r\n\r\n");
+    });
+
+    expect(out).not.toContain("Connection:");
+    expect(out).toEndWith("ok");
+  } finally {
+    server.close();
+  }
+});
+
+it("Expect: 100-Continue matches case-insensitively like Node.js", async () => {
+  // RFC 7231 5.1.1: expectation values compare case-insensitively; Node
+  // uses /(?:^|\W)100-continue(?:$|\W)/i, not strict equality.
+  const server = createServer((req, res) => {
+    req.resume();
+    req.on("end", () => res.end("done"));
+  });
+  try {
+    server.listen(0, "127.0.0.1");
+    await once(server, "listening");
+    const { port } = server.address() as AddressInfo;
+
+    const out = await new Promise<string>((resolve, reject) => {
+      const socket = connect(port, "127.0.0.1");
+      let data = "";
+      let sentBody = false;
+      socket.on("data", chunk => {
+        data += chunk;
+        if (!sentBody && data.includes("100 Continue")) {
+          sentBody = true;
+          socket.write("hello");
+        }
+        if (data.endsWith("done")) {
+          socket.end();
+          resolve(data);
+        }
+      });
+      socket.on("error", reject);
+      socket.write(
+        "POST / HTTP/1.1\r\nHost: x\r\nExpect: 100-Continue\r\nContent-Length: 5\r\n\r\n",
+      );
+    });
+
+    expect(out).toContain("HTTP/1.1 100 Continue");
+    expect(out).not.toContain("417");
+    expect(out).toEndWith("done");
+  } finally {
+    server.close();
+  }
+});
