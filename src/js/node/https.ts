@@ -91,7 +91,11 @@ function getTunnelConfigForProxiedHttps(agent, reqOptions) {
     requestOptions: {
       // Options used for the request sent after the tunnel is established.
       __proto__: null,
-      servername: reqOptions.servername || ipType ? undefined : reqOptions.host,
+      // Dead today (the spread below always carries a servername set by
+      // normalizeServerName), kept for upstream parity - parenthesized so the
+      // fallback reads as intended if it ever becomes live. Upstream parses
+      // this as `(servername || ipType) ? undefined : host`.
+      servername: reqOptions.servername || (ipType ? undefined : reqOptions.host),
       ...reqOptions,
     },
   };

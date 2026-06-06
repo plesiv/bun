@@ -2595,3 +2595,27 @@ it("standalone ServerResponse buffers writes made before assignSocket and flushe
   expect(out).toContain("5\r\nhello\r\n");
   expect(out).toEndWith("0\r\n\r\n");
 });
+
+it("standalone ServerResponse discards body writes to a no-body response without throwing", async () => {
+  // After writeHead(204) (_hasBody = false), Node.js silently ignores
+  // write('body') and returns true; the no-handle delegation must pass the
+  // original chunk through so write_()'s own discard handles it instead of
+  // its chunk-type validation throwing on a cleared undefined chunk.
+  const chunks: Buffer[] = [];
+  const ws = new Writable({
+    write(c, e, cb) {
+      chunks.push(Buffer.from(c));
+      cb();
+    },
+  });
+  const res = new ServerResponse(new IncomingMessage(null as any));
+  res.assignSocket(ws);
+  res.writeHead(204);
+  expect(res.write("body")).toBe(true);
+  res.end();
+  await once(res, "finish");
+
+  const out = Buffer.concat(chunks).toString();
+  expect(out).toStartWith("HTTP/1.1 204 No Content\r\n");
+  expect(out).not.toContain("body");
+});

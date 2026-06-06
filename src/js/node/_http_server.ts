@@ -2001,14 +2001,6 @@ ServerResponse.prototype.write = function (chunk, encoding, callback) {
   if (hasServerResponseFinished(this, chunk, callback)) {
     return false;
   }
-  if (chunk && !this._hasBody) {
-    if (this[kRejectNonStandardBodyWrites]) {
-      throw $ERR_HTTP_BODY_NOT_ALLOWED();
-    } else {
-      // node.js just ignores the write in this case
-      chunk = undefined;
-    }
-  }
   let result = 0;
 
   const headerState = this[headerStateSymbol];
@@ -2019,7 +2011,19 @@ ServerResponse.prototype.write = function (chunk, encoding, callback) {
     // standalone fallback) so headers are rendered and chunk framing applied
     // before anything reaches the assigned socket. Writing to `this.socket`
     // directly would emit the raw body bytes ahead of the header block.
+    // The original chunk passes through untouched: write_() has its own
+    // !_hasBody discard, and clearing it to undefined here would trip
+    // write_()'s chunk-type validation instead.
     return OutgoingMessagePrototype.write.$call(this, chunk, encoding, callback);
+  }
+
+  if (chunk && !this._hasBody) {
+    if (this[kRejectNonStandardBodyWrites]) {
+      throw $ERR_HTTP_BODY_NOT_ALLOWED();
+    } else {
+      // node.js just ignores the write in this case
+      chunk = undefined;
+    }
   }
 
   const flags = handle.flags;
