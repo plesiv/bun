@@ -2571,3 +2571,27 @@ it("standalone ServerResponse flushes the header block before a non-chunked Buff
   // response (OutgoingMessage.end -> _finish()).
   expect(sawPrefinish).toBe(true);
 });
+
+it("standalone ServerResponse buffers writes made before assignSocket and flushes them on assignment", async () => {
+  // Node.js buffers pre-assignSocket output in outputData (OutgoingMessage
+  // _writeRaw with a null socket) and assignSocket() ends with _flush().
+  const chunks: Buffer[] = [];
+  const ws = new Writable({
+    write(c, e, cb) {
+      chunks.push(Buffer.from(c));
+      cb();
+    },
+  });
+  const res = new ServerResponse(new IncomingMessage(null as any));
+  res.write("hello");
+  res.assignSocket(ws);
+  res.end();
+  await once(res, "finish");
+
+  const out = Buffer.concat(chunks).toString();
+  expect(out).toStartWith("HTTP/1.1 200 OK\r\n");
+  // No Content-Length was known at write() time, so the body is chunked.
+  expect(out).toContain("Transfer-Encoding: chunked");
+  expect(out).toContain("5\r\nhello\r\n");
+  expect(out).toEndWith("0\r\n\r\n");
+});

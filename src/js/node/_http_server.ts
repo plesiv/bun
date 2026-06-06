@@ -1750,17 +1750,12 @@ Object.defineProperty(ServerResponse.prototype, "headersSent", {
 });
 
 ServerResponse.prototype._writeRaw = function (chunk, encoding, callback) {
-  // The standalone OutgoingMessage machinery buffers the rendered header block
-  // (and earlier chunks) in outputData - flush it first so the header precedes
-  // the body on the assigned socket. Empty on the native-handle path.
-  const outputData = this.outputData;
-  if (outputData && outputData.length) {
-    for (let i = 0; i < outputData.length; i++) {
-      const { data, encoding: enc, callback: cb } = outputData[i];
-      this.socket.write(data, enc, cb);
-    }
-    this.outputData = [];
-    this.outputSize = 0;
+  if (!this[kHandle]) {
+    // Standalone path: OutgoingMessage._writeRaw buffers to outputData while
+    // no socket is assigned yet (kSocket is null) and flushes the buffer
+    // ahead of the chunk once one is - writing through the auto-creating
+    // `socket` getter here would drop the bytes into a FakeSocket.
+    return OutgoingMessagePrototype._writeRaw.$apply(this, arguments);
   }
   return this.socket.write(chunk, encoding, callback);
 };
@@ -2249,6 +2244,8 @@ ServerResponse.prototype.assignSocket = function (socket) {
   socket.once("close", onServerResponseClose);
   this.socket = socket;
   this.emit("socket", socket);
+  // Like Node.js: drain anything written before the socket was assigned.
+  this._flush();
 };
 
 Object.defineProperty(ServerResponse.prototype, "shouldKeepAlive", {
