@@ -188,6 +188,12 @@ function establishTunnel(agent, socket, options, tunnelConfig, afterSocket) {
       tunneledSocket = tls.connect(requestOptions, onTLSHandshakeSuccess);
       tunneledSocket.on("free", onTunneledSocketFree);
       tunneledSocket.on("error", onTLSHandshakeError);
+      if (requestOptions._agentKey) {
+        // The tunneled socket carries the TLS session with the target; cache
+        // it (and evict on close) under the target's agent key.
+        tunneledSocket.on("session", onSocketSession.bind(agent, requestOptions._agentKey));
+        tunneledSocket.once("close", onSocketClose.bind(agent, requestOptions._agentKey));
+      }
     }
     return headerEndIndex;
   }
@@ -316,8 +322,11 @@ function createConnection(...args) {
     socket[kWaitForProxyTunnel] = true;
   }
 
-  if (options._agentKey) {
-    // Cache new session for reuse
+  if (options._agentKey && tunnelConfig === null) {
+    // Cache new session for reuse. On the proxy-tunnel path `socket` is the
+    // connection to the proxy, not the target - establishTunnel attaches
+    // these listeners to the tunneled target socket instead, so the proxy's
+    // session is never cached under the target's key.
     socket.on("session", onSocketSession.bind(this, options._agentKey));
 
     // Evict session on error

@@ -2619,3 +2619,140 @@ it("standalone ServerResponse discards body writes to a no-body response without
   expect(out).toStartWith("HTTP/1.1 204 No Content\r\n");
   expect(out).not.toContain("body");
 });
+
+it("flushHeaders on a 204 response carries no chunked framing", async () => {
+  // noBodyStatus must suppress the Transfer-Encoding header in flushHeaders()
+  // and the terminating chunk in internalEnd(), like the one-shot end() path.
+  const server = createServer((req, res) => {
+    if (req.url === "/nobody") {
+      res.writeHead(204);
+      res.flushHeaders();
+      res.end();
+    } else {
+      res.writeHead(200);
+      res.end("hello");
+    }
+  });
+  try {
+    server.listen(0, "127.0.0.1");
+    await once(server, "listening");
+    const { port } = server.address() as AddressInfo;
+
+    const out = await new Promise<string>((resolve, reject) => {
+      const socket = connect(port, "127.0.0.1");
+      let data = "";
+      let sentSecond = false;
+      socket.on("data", chunk => {
+        data += chunk;
+        if (!sentSecond && data.includes("\r\n\r\n")) {
+          sentSecond = true;
+          socket.write("GET /second HTTP/1.1\r\nHost: localhost\r\n\r\n");
+        }
+        if (sentSecond && data.endsWith("hello")) {
+          socket.end();
+          resolve(data);
+        }
+      });
+      socket.on("error", reject);
+      socket.write("GET /nobody HTTP/1.1\r\nHost: localhost\r\n\r\n");
+    });
+
+    const first = out.slice(0, out.indexOf("HTTP/1.1 200"));
+    expect(first).toContain("HTTP/1.1 204");
+    expect(first).not.toContain("Transfer-Encoding");
+    expect(first).not.toContain("0\r\n\r\n");
+    // The keep-alive connection still serves the next request correctly.
+    const second = out.slice(out.indexOf("HTTP/1.1 200"));
+    expect(second).toContain("Content-Length: 5");
+    expect(second).toEndWith("\r\n\r\nhello");
+  } finally {
+    server.close();
+  }
+});
+
+it("standalone ServerResponse flushHeaders pushes the header block immediately", async () => {
+  const chunks: Buffer[] = [];
+  const ws = new Writable({
+    write(c, e, cb) {
+      chunks.push(Buffer.from(c));
+      cb();
+    },
+  });
+  const res = new ServerResponse(new IncomingMessage(null as any));
+  res.assignSocket(ws);
+  res.flushHeaders();
+
+  // The header block reaches the socket before any body is written.
+  const afterFlush = Buffer.concat(chunks).toString();
+  expect(afterFlush).toStartWith("HTTP/1.1 200 OK\r\n");
+  expect(afterFlush).toEndWith("\r\n\r\n");
+
+  res.end("hi");
+  await once(res, "finish");
+  const out = Buffer.concat(chunks).toString();
+  // The body follows without re-sending the header.
+  expect(out.indexOf("HTTP/1.1 200 OK")).toBe(out.lastIndexOf("HTTP/1.1 200 OK"));
+  expect(out).toContain("2\r\nhi\r\n0\r\n\r\n");
+});
+
+it("caches the target's TLS session for proxy-tunneled https requests", async () => {
+  // The 'session' listener must be on the tunneled target socket, not the
+  // proxy connection: a plain HTTP proxy socket never emits 'session', so
+  // pre-fix the cache stayed empty (and an HTTPS proxy cached its own
+  // session under the target's key).
+  const target = createHttpsServer({ key: tlsCert.key, cert: tlsCert.cert }, (req, res) => {
+    res.end("ok");
+  });
+  let connectSeen = false;
+  const proxy = createServer();
+  proxy.on("connect", (req, clientSocket, head) => {
+    connectSeen = true;
+    const [host, port] = (req.url as string).split(":");
+    const serverSocket = connect(Number(port), host, () => {
+      clientSocket.write("HTTP/1.1 200 Connection Established\r\n\r\n");
+      if (head?.length) serverSocket.write(head);
+      serverSocket.pipe(clientSocket);
+      clientSocket.pipe(serverSocket);
+    });
+    serverSocket.on("error", () => clientSocket.end());
+  });
+  try {
+    target.listen(0, "127.0.0.1");
+    await once(target, "listening");
+    const targetPort = (target.address() as AddressInfo).port;
+    proxy.listen(0, "127.0.0.1");
+    await once(proxy, "listening");
+    const proxyPort = (proxy.address() as AddressInfo).port;
+
+    const agent = new https.Agent({
+      proxyEnv: { HTTPS_PROXY: `http://127.0.0.1:${proxyPort}` },
+      maxCachedSessions: 10,
+    });
+
+    const { promise, resolve, reject } = Promise.withResolvers<void>();
+    const req = https.request(
+      { host: "127.0.0.1", port: targetPort, path: "/", agent, rejectUnauthorized: false },
+      res => {
+        res.resume();
+        res.on("end", resolve);
+      },
+    );
+    req.on("error", reject);
+    const socketPromise = once(req, "socket");
+    req.end();
+    const [tunneledSocket] = await socketPromise;
+    // The agent's caching listener must be on the tunneled target socket
+    // (pre-fix it sat on the proxy connection, which never emits 'session'
+    // for an HTTP proxy). Emitting the event here exercises that listener
+    // deterministically - the wrapped-TLS ticket delivery itself is async.
+    tunneledSocket.emit("session", Buffer.from("session-ticket"));
+    expect((agent as any)._sessionCache.list.length).toBe(1);
+    await promise;
+
+    expect(connectSeen).toBe(true);
+    agent.destroy();
+  } finally {
+    proxy.close();
+    target.close();
+  }
+});

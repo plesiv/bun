@@ -131,7 +131,7 @@ public:
         }
 
         /* if write was called and there was previously no Content-Length header set */
-        if (httpResponseData->state & HttpResponseData<SSL>::HTTP_WRITE_CALLED && !(httpResponseData->state & HttpResponseData<SSL>::HTTP_WROTE_CONTENT_LENGTH_HEADER) && !httpResponseData->fromAncientRequest && !httpResponseData->closeDelimited) {
+        if (httpResponseData->state & HttpResponseData<SSL>::HTTP_WRITE_CALLED && !(httpResponseData->state & HttpResponseData<SSL>::HTTP_WROTE_CONTENT_LENGTH_HEADER) && !httpResponseData->fromAncientRequest && !httpResponseData->closeDelimited && !httpResponseData->noBodyStatus) {
 
             /* We do not have tryWrite-like functionalities, so ignore optional in this path */
 
@@ -536,7 +536,7 @@ public:
 
         /* Close-delimited responses must not re-add the Transfer-Encoding
          * header the user removed; their body is raw, so take the else path. */
-        if (!(httpResponseData->state & HttpResponseData<SSL>::HTTP_WROTE_CONTENT_LENGTH_HEADER) && !httpResponseData->fromAncientRequest && !httpResponseData->closeDelimited) {
+        if (!(httpResponseData->state & HttpResponseData<SSL>::HTTP_WROTE_CONTENT_LENGTH_HEADER) && !httpResponseData->fromAncientRequest && !httpResponseData->closeDelimited && !httpResponseData->noBodyStatus) {
             if (!(httpResponseData->state & HttpResponseData<SSL>::HTTP_WRITE_CALLED)) {
                 /* Write mark on first call to write */
                 writeMark();

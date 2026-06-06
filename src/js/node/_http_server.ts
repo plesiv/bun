@@ -2305,6 +2305,10 @@ ServerResponse.prototype.flushHeaders = function () {
       );
     }
     handle.flushHeaders();
+  } else {
+    // Standalone path: _storeHeader rendered this._header; _send('') pushes
+    // it to the assigned socket like OutgoingMessage.flushHeaders does.
+    this._send("");
   }
 };
 
