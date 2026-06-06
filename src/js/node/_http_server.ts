@@ -958,8 +958,16 @@ function onServerClientError(ssl: boolean, socket: unknown, errorCode: number, r
       break;
   }
   err.rawPacket = rawPacket;
-  const nodeSocket = new NodeHTTPServerSocket(self, socket, ssl);
-  self.emit("connection", nodeSocket);
+  // A prior request on this keep-alive connection may already have wrapped
+  // the native handle (the native side returns the existing handle); a second
+  // wrapper would overwrite its onclose/duplex and strand the first one in
+  // kTrackedConnections. Reuse it, and only announce genuinely new
+  // connections - the existing duplex already had its 'connection' event.
+  const existingDuplex = (socket as any).duplex;
+  const nodeSocket = existingDuplex ?? new NodeHTTPServerSocket(self, socket, ssl);
+  if (!existingDuplex) {
+    self.emit("connection", nodeSocket);
+  }
   self.emit("clientError", err, nodeSocket);
   if (nodeSocket.listenerCount("error") > 0) {
     nodeSocket.emit("error", err);

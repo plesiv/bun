@@ -2823,3 +2823,54 @@ it("removing transfer-encoding on a HEAD response keeps the connection alive", a
     server.close();
   }
 });
+
+it("clientError after a kept-alive request reuses the connection's socket and untracks it on close", async () => {
+  // The native side returns the existing handle for parser errors on a
+  // connection that already served a request; wrapping it again stranded the
+  // first Duplex in the tracked-connections set and re-emitted 'connection'.
+  let connectionEvents = 0;
+  let connectionSocket: any;
+  let clientErrorSocket: any;
+  const { promise: errored, resolve: onErrored } = Promise.withResolvers<void>();
+  const server = createServer((req, res) => {
+    res.end("ok");
+  });
+  server.on("connection", s => {
+    connectionEvents++;
+    connectionSocket = s;
+  });
+  server.on("clientError", (err, s) => {
+    clientErrorSocket = s;
+    s.end("HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
+    onErrored();
+  });
+  try {
+    server.listen(0, "127.0.0.1");
+    await once(server, "listening");
+    const { port } = server.address() as AddressInfo;
+
+    const socket = connect(port, "127.0.0.1");
+    const closed = new Promise<void>(r => socket.on("close", () => r()));
+    let sentGarbage = false;
+    socket.on("data", chunk => {
+      if (!sentGarbage && chunk.toString().includes("ok")) {
+        sentGarbage = true;
+        socket.write("!!!\r\n\r\n");
+      }
+    });
+    socket.on("error", () => {});
+    socket.write("GET / HTTP/1.1\r\nHost: localhost\r\n\r\n");
+    await errored;
+
+    expect(connectionEvents).toBe(1);
+    expect(clientErrorSocket).toBe(connectionSocket);
+
+    await closed;
+    // The lone Duplex untracks itself; getConnections drains to zero.
+    while ((await new Promise<number>(r => server.getConnections((e, c) => r(c)))) !== 0) {
+      await Bun.sleep(10);
+    }
+  } finally {
+    server.close();
+  }
+});
