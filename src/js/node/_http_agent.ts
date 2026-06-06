@@ -136,10 +136,11 @@ function maybeEnableKeylog(this: Agent, eventName) {
     this[kOnKeylog] = function onkeylog(keylog) {
       agent.emit("keylog", keylog, this);
     };
-    // Existing sockets will start listening on keylog now.
-    const sockets = Object.values(this.sockets);
-    for (let i = 0; i < sockets.length; i++) {
-      sockets[i]!.on("keylog", this[kOnKeylog]);
+    // Existing sockets will start listening on keylog now. agent.sockets
+    // maps names to socket arrays, so flatten before attaching (upstream
+    // iterates the outer object and calls .on() on the arrays).
+    for (const socket of Object.values(this.sockets).flat() as any[]) {
+      socket.on("keylog", this[kOnKeylog]);
     }
   }
 }

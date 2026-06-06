@@ -1930,6 +1930,13 @@ ServerResponse.prototype.end = function (chunk, encoding, callback) {
     return this;
   }
 
+  if (chunk && this[headerStateSymbol] === NodeHTTPHeaderState.none) {
+    // Implicit header: Node's write_() runs _implicitHeader() (which derives
+    // _hasBody from the status code) before its !_hasBody discard. writeHead
+    // was never called here, so derive it now or a body written to a 204/304
+    // would reach the wire chunk-framed with no terminator.
+    updateHasBody(this, this.statusCode);
+  }
   if (chunk && !this._hasBody) {
     if (this[kRejectNonStandardBodyWrites]) {
       throw $ERR_HTTP_BODY_NOT_ALLOWED();
@@ -2060,6 +2067,13 @@ ServerResponse.prototype.write = function (chunk, encoding, callback) {
     return OutgoingMessagePrototype.write.$call(this, chunk, encoding, callback);
   }
 
+  if (chunk && this[headerStateSymbol] === NodeHTTPHeaderState.none) {
+    // Implicit header: Node's write_() runs _implicitHeader() (which derives
+    // _hasBody from the status code) before its !_hasBody discard. writeHead
+    // was never called here, so derive it now or a body written to a 204/304
+    // would reach the wire chunk-framed with no terminator.
+    updateHasBody(this, this.statusCode);
+  }
   if (chunk && !this._hasBody) {
     if (this[kRejectNonStandardBodyWrites]) {
       throw $ERR_HTTP_BODY_NOT_ALLOWED();
@@ -2139,7 +2153,7 @@ function flushWriteAccountingNT(res) {
   res[kAccountingFlushScheduled] = false;
   const needsDrain = (res[kBytesBuffered] ?? 0) >= res.writableHighWaterMark;
   res[kBytesBuffered] = 0;
-  if (needsDrain && !res.destroyed) {
+  if (needsDrain && !res.destroyed && !res.finished) {
     res.emit("drain");
   }
 }

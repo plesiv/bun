@@ -3117,3 +3117,105 @@ it("plain HEAD with flushHeaders carries no auto-chunked framing", async () => {
     server.close();
   }
 });
+
+it("statusCode = 204 with a streamed write carries no body framing", async () => {
+  // Without writeHead(), the implicit-header path must still derive _hasBody
+  // from the status code before the body-discard check, like Node's
+  // _implicitHeader ordering - otherwise the chunk reaches the wire
+  // chunk-framed with no terminator.
+  const server = createServer((req, res) => {
+    if (req.url === "/nobody") {
+      res.statusCode = 204;
+      res.write("hello");
+      res.end();
+    } else {
+      res.end("world");
+    }
+  });
+  try {
+    server.listen(0, "127.0.0.1");
+    await once(server, "listening");
+    const { port } = server.address() as AddressInfo;
+
+    const out = await new Promise<string>((resolve, reject) => {
+      const socket = connect(port, "127.0.0.1");
+      let data = "";
+      let sentSecond = false;
+      socket.on("data", chunk => {
+        data += chunk;
+        if (!sentSecond && data.includes("\r\n\r\n")) {
+          sentSecond = true;
+          socket.write("GET / HTTP/1.1\r\nHost: x\r\n\r\n");
+        }
+        if (sentSecond && data.endsWith("world")) {
+          socket.end();
+          resolve(data);
+        }
+      });
+      socket.on("error", reject);
+      socket.write("GET /nobody HTTP/1.1\r\nHost: x\r\n\r\n");
+    });
+
+    const first = out.slice(0, out.indexOf("HTTP/1.1 200", 10));
+    expect(first).toContain("HTTP/1.1 204");
+    expect(first).not.toContain("Transfer-Encoding");
+    expect(first).not.toContain("hello");
+    expect(first).toEndWith("\r\n\r\n");
+    expect(out).toEndWith("\r\n\r\nworld");
+  } finally {
+    server.close();
+  }
+});
+
+it("no 'drain' is emitted for accounting flushed after the response finished", async () => {
+  let drains = 0;
+  const { promise: handled, resolve: onHandled } = Promise.withResolvers<boolean>();
+  const server = createServer((req, res) => {
+    res.on("drain", () => drains++);
+    const ret = res.write(Buffer.alloc(res.writableHighWaterMark + 100));
+    res.end();
+    onHandled(ret);
+  });
+  try {
+    server.listen(0, "127.0.0.1");
+    await once(server, "listening");
+    const { port } = server.address() as AddressInfo;
+    const res = await fetch(`http://127.0.0.1:${port}/`);
+    await res.arrayBuffer();
+    const ret = await handled;
+    // The write crossed the high-water mark...
+    expect(ret).toBe(false);
+    // ...but the pending accounting flush must not emit 'drain' on a
+    // response that already finished (matching writableNeedDrain and
+    // Node's socketOnDrain gating).
+    await new Promise<void>(r => process.nextTick(r));
+    expect(drains).toBe(0);
+  } finally {
+    server.close();
+  }
+});
+
+it("registering 'keylog' on an agent with live sockets does not throw", async () => {
+  const server = createServer((req, res) => res.end("ok"));
+  try {
+    server.listen(0, "127.0.0.1");
+    await once(server, "listening");
+    const { port } = server.address() as AddressInfo;
+    const agent = new Agent({ keepAlive: true });
+    const { promise, resolve, reject } = Promise.withResolvers<void>();
+    const req = http.request({ host: "127.0.0.1", port, path: "/", agent }, res => {
+      // agent.sockets is populated while the request is in flight; the
+      // newListener hook must flatten the socket arrays instead of calling
+      // .on() on them.
+      expect(() => agent.on("keylog", () => {})).not.toThrow();
+      res.resume();
+      res.on("end", resolve);
+    });
+    req.on("error", reject);
+    req.end();
+    await promise;
+    agent.destroy();
+  } finally {
+    server.close();
+  }
+});
