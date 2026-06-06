@@ -310,13 +310,13 @@ Server.prototype[kServerResponse] = undefined;
 
 Server.prototype[kConnectionsCheckingInterval] = undefined;
 
-// Like Node.js's setupConnectionsTracking: each 'listening' event replaces
-// the connections-checking interval timer (used by the headers/request
-// timeout machinery) and destroys the previous one.
 function rethrowUncaught(err) {
   throw err;
 }
 
+// Like Node.js's setupConnectionsTracking: each 'listening' event replaces
+// the connections-checking interval timer (used by the headers/request
+// timeout machinery) and destroys the previous one.
 function noopConnectionsCheck() {}
 function setupConnectionsTracking(this: any) {
   if (this[kConnectionsCheckingInterval]) {
