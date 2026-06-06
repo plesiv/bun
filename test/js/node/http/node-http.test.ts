@@ -3389,9 +3389,7 @@ it("the over-limit 503 advertises Connection: close, not keep-alive", async () =
       socket.on("close", () => resolve(data));
       socket.on("error", reject);
       // Two pipelined requests: the second exceeds maxRequestsPerSocket.
-      socket.write(
-        "GET / HTTP/1.1\r\nHost: x\r\n\r\n" + "GET / HTTP/1.1\r\nHost: x\r\n\r\n",
-      );
+      socket.write("GET / HTTP/1.1\r\nHost: x\r\n\r\n" + "GET / HTTP/1.1\r\nHost: x\r\n\r\n");
     });
 
     const second = out.slice(out.indexOf("HTTP/1.1 503"));
