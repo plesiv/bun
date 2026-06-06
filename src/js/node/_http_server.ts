@@ -671,14 +671,15 @@ Server.prototype[kRealListen] = function (tls, port, host, socketPath, reusePort
           const requestCount = (socket._requestCount || 0) + 1;
           socket._requestCount = requestCount;
           http_res._maxRequestsPerSocket = server.maxRequestsPerSocket;
+          // At (or beyond) the limit the response advertises Connection:
+          // close, like Node.js - including the over-limit 503 dropRequest
+          // answer, which would otherwise claim keep-alive right before the
+          // socket is destroyed. Closing the socket here instead would race
+          // already-pipelined requests, which still need to be dispatched so
+          // they can be answered with 503 via dropRequest.
+          http_res.maxRequestsOnConnectionReached = server.maxRequestsPerSocket <= requestCount;
           if (server.maxRequestsPerSocket < requestCount) {
             reachedRequestsLimit = true;
-          } else if (server.maxRequestsPerSocket <= requestCount) {
-            // This is the last request this connection is allowed to serve:
-            // advertise Connection: close, like Node.js. Closing the socket
-            // here would race already-pipelined requests, which still need to
-            // be dispatched so they can be answered with 503 via dropRequest.
-            http_res.maxRequestsOnConnectionReached = true;
           }
         }
 

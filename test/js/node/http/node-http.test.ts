@@ -3369,3 +3369,36 @@ it("Expect: 100-Continue matches case-insensitively like Node.js", async () => {
     server.close();
   }
 });
+
+it("the over-limit 503 advertises Connection: close, not keep-alive", async () => {
+  // Node sets maxRequestsOnConnectionReached unconditionally
+  // (maxRequestsPerSocket <= count), so the dropRequest 503 carries
+  // Connection: close instead of advertising keep-alive right before the
+  // socket is destroyed.
+  const server = createServer((req, res) => res.end("ok"));
+  server.maxRequestsPerSocket = 1;
+  try {
+    server.listen(0, "127.0.0.1");
+    await once(server, "listening");
+    const { port } = server.address() as AddressInfo;
+
+    const out = await new Promise<string>((resolve, reject) => {
+      const socket = connect(port, "127.0.0.1");
+      let data = "";
+      socket.on("data", chunk => (data += chunk));
+      socket.on("close", () => resolve(data));
+      socket.on("error", reject);
+      // Two pipelined requests: the second exceeds maxRequestsPerSocket.
+      socket.write(
+        "GET / HTTP/1.1\r\nHost: x\r\n\r\n" + "GET / HTTP/1.1\r\nHost: x\r\n\r\n",
+      );
+    });
+
+    const second = out.slice(out.indexOf("HTTP/1.1 503"));
+    expect(second).toContain("HTTP/1.1 503");
+    expect(second).toContain("Connection: close");
+    expect(second).not.toContain("keep-alive");
+  } finally {
+    server.close();
+  }
+});
