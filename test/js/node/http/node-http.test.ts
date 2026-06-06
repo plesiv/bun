@@ -3268,3 +3268,34 @@ it("statusCode = 204 with an empty first write still discards the body", async (
     server.close();
   }
 });
+
+it("res.shouldKeepAlive = false renders Connection: close and ends the socket", async () => {
+  // Graceful-shutdown helpers (stoppable, http-terminator) clear
+  // shouldKeepAlive on in-flight responses; the rendered header and the
+  // transport must follow it like Node's shouldSendKeepAlive/_last.
+  const server = createServer((req, res) => {
+    res.shouldKeepAlive = false;
+    res.end("ok");
+  });
+  try {
+    server.listen(0, "127.0.0.1");
+    await once(server, "listening");
+    const { port } = server.address() as AddressInfo;
+
+    const out = await new Promise<string>((resolve, reject) => {
+      const socket = connect(port, "127.0.0.1");
+      let data = "";
+      socket.on("data", chunk => (data += chunk));
+      // The server must send FIN on its own; the client never half-closes.
+      socket.on("end", () => resolve(data));
+      socket.on("error", reject);
+      socket.write("GET / HTTP/1.1\r\nHost: x\r\n\r\n");
+    });
+
+    expect(out).toContain("Connection: close");
+    expect(out).not.toContain("keep-alive");
+    expect(out).toEndWith("ok");
+  } finally {
+    server.close();
+  }
+});

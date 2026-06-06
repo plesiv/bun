@@ -1553,6 +1553,7 @@ function renderNativeHeaders(res) {
       !defectiveNoBodyResponse &&
       !closeDelimited &&
       !res.maxRequestsOnConnectionReached &&
+      res.shouldKeepAlive !== false &&
       requestShouldKeepAlive(res.req)
     ) {
       flat.push("Connection", "keep-alive");
@@ -1565,6 +1566,12 @@ function renderNativeHeaders(res) {
         flat.push("Keep-Alive", `timeout=${MathFloor(keepAliveTimeout / 1000)}${max}`);
       }
     } else {
+      // Like Node's shouldSendKeepAlive/_last handling: a user-cleared
+      // shouldKeepAlive (graceful-shutdown helpers set it on in-flight
+      // responses) must also end the socket after 'finish'.
+      if (res.shouldKeepAlive === false) {
+        res[kMustCloseConnection] = true;
+      }
       flat.push("Connection", "close");
     }
   }
@@ -2313,12 +2320,13 @@ ServerResponse.prototype.assignSocket = function (socket) {
   this._flush();
 };
 
-// Like chunkedEncoding: the native-handle path reads the handle's flag, but
-// the standalone path runs through _storeHeader, whose 204/304 handling
-// assigns shouldKeepAlive = false - that write needs real storage.
+// Backed by real storage (the native response handle exposes no such flag):
+// the standalone _storeHeader path's 204/304 handling assigns it, graceful
+// shutdown helpers clear it on in-flight responses, and renderNativeHeaders
+// consults it for the Connection header and close-on-finish.
 Object.defineProperty(ServerResponse.prototype, "shouldKeepAlive", {
   get() {
-    return this[kHandle]?.shouldKeepAlive ?? this[kShouldKeepAlive] ?? true;
+    return this[kShouldKeepAlive] ?? true;
   },
   set(value) {
     this[kShouldKeepAlive] = value;
