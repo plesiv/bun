@@ -685,9 +685,11 @@ impl ErrorCode {
     pub const FS_CP_EEXIST: ErrorCode = ErrorCode(313);
     /// `ERR_FS_CP_SYMLINK_TO_SUBDIRECTORY` (instanceof Error)
     pub const FS_CP_SYMLINK_TO_SUBDIRECTORY: ErrorCode = ErrorCode(314);
+    /// `ERR_DIR_CONCURRENT_OPERATION` (instanceof Error)
+    pub const DIR_CONCURRENT_OPERATION: ErrorCode = ErrorCode(315);
 
     /// == C++ `NODE_ERROR_COUNT`.
-    pub const COUNT: u16 = 315;
+    pub const COUNT: u16 = 316;
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -1046,6 +1048,7 @@ impl ErrorCode {
     pub const ERR_FS_CP_EEXIST: ErrorCode = ErrorCode::FS_CP_EEXIST;
     pub const ERR_FS_CP_SYMLINK_TO_SUBDIRECTORY: ErrorCode =
         ErrorCode::FS_CP_SYMLINK_TO_SUBDIRECTORY;
+    pub const ERR_DIR_CONCURRENT_OPERATION: ErrorCode = ErrorCode::DIR_CONCURRENT_OPERATION;
 
     // NOTE: `ERR_SYSTEM_ERROR` / `ERR_CHILD_CLOSED_BEFORE_REPLY` intentionally
     // do NOT live here. They belong to the unrelated enum
@@ -1378,6 +1381,7 @@ static CODE_STR: [&str; ErrorCode::COUNT as usize] = [
     "ERR_SECRETS_INTERACTION_REQUIRED",
     "ERR_FS_CP_EEXIST",
     "ERR_FS_CP_SYMLINK_TO_SUBDIRECTORY",
+    "ERR_DIR_CONCURRENT_OPERATION",
 ];
 
 // ──────────────────────────────────────────────────────────────────────────
