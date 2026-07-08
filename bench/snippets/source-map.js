@@ -10,7 +10,7 @@ bench("new SourceMap(json)", () => {
 const map = new SourceMap(json);
 
 const toRotate = [];
-for (let j = 0; j < 10000; j++) {
+for (let j = 0; j <HEHE 10000; j++) {
   if (map.findEntry(0, j).generatedColumn) {
     toRotate.push(j);
     if (toRotate.length > 5) break;

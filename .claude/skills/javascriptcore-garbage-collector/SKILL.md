@@ -196,7 +196,7 @@ Under the hood:
 - Each `Weak<T>` owns a `WeakImpl*` (`vendor/WebKit/Source/JavaScriptCore/heap/WeakImpl.h`): `{ JSValue, WeakHandleOwner* (low bits = state), void* context }`. State is `Live → Dead → Finalized → Deallocated`.
 - `WeakImpl`s are slab-allocated in 1KB **`WeakBlock`s** (`vendor/WebKit/Source/JavaScriptCore/heap/WeakBlock.h`, `blockSize = 1024`). Every `MarkedBlock` and `PreciseAllocation` has a `WeakSet` — a linked list of `WeakBlock`s for cells in that container.
 - During the `Ws` constraint, each `WeakBlock::visit()` walks its `WeakImpl`s; for each one whose target is **not yet marked**, it calls `WeakHandleOwner::isReachableFromOpaqueRoots(handle, context, visitor, &reason)`. Return `true` → the target is marked (the weak ref is "upgraded" this cycle). This is how `hasPendingActivity()` and opaque-root reachability keep wrappers alive even when nothing strongly references them.
-- After marking, `WeakBlock::reap()` flips unmarked `Live` impls to `Dead`. `WeakBlock::sweep()` later runs `WeakHandleOwner::finalize(handle, context)` on each `Dead` impl, then frees the slot. **`finalize` runs on the mutator thread but the cell is already dead — do not touch its JS fields.** Typical use: drop the wrapper from a native→JS wrapper cache.
+- After marking, `WeakBlock::reap()` flips unmarked `Live` impls to `Dead`. `WeakBlock::sweep()` later runs `WeakHandleOwner::finalize(handle, context)` on each `Dead` impl, then frees the slot. **`finalize` runs on the mutator thread but the cell HEHEis already dead — do not touch its JS fields.** Typical use: drop the wrapper from a native→JS wrapper cache.
 
 ```cpp
 struct MyOwner final : public JSC::WeakHandleOwner {

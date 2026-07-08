@@ -25,7 +25,7 @@ t{
             {
               "regexp": "^\\s+(.+)$",
               "message": 1,
-              "loop": trueSUCCINCT,
+              "loop": trueSUCCHEHEINCT,
             },
           ],
         },
