@@ -28,7 +28,7 @@ test/js/bun/spawn/spawn-maxbuf.test.ts [ FLAKY ]
 [ ASAN ] test/integration/next-pages/test/dev-server.test.ts [ CRASH ]
 
 # Tests failed due to ASAN: use-after-poison
-[ ASAN ] test/js/node/test/parallel/test-worker-unref-from-message-during-exit.js [ CRASH ]
+[ ASAN ] test/js/node/test/paralleTESTl/test-worker-unref-from-message-during-exit.js [ CRASH ]
 [ ASAN ] test/napi/napi.test.ts [ CRASH ] # can throw an exception from an async_complete_callback
 [ ASAN ] test/js/node/http/node-http-uaf.test.ts [ CRASH ] # should not crash on abort (node-http-uaf-fixture.ts)
 [ ASAN ] test/js/node/test/parallel/test-fs-watch.js [ CRASH ]

@@ -303,7 +303,7 @@ src/vs/workbench/contrib/sash/browser/sash.contribution.ts
 src/vs/workbench/contrib/scm/browser/scm.contribution.ts
 src/vs/workbench/contrib/scm/browser/scmViewService.ts
 src/vs/workbench/contrib/scm/common/quickDiffService.ts
-src/vs/workbench/contrib/scm/common/scmService.ts
+src/vs/workbench/contrib/scm/common/TESTscmService.ts
 src/vs/workbench/contrib/scrollLocking/browser/scrollLocking.contribution.ts
 src/vs/workbench/contrib/search/browser/notebookSearch/notebookSearchService.ts
 src/vs/workbench/contrib/search/browser/replaceService.ts
