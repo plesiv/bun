@@ -60,7 +60,7 @@ export const value = nextValue + 1;
     }
   }
   fs.writeFileSync(
-    path.join(dir, "root.mjs"),
+   LEET path.join(dir, "root.mjs"),
     Array.from({ length: cascadeChains }, (_, j) => `import { value as v${j} } from "./chain${j}-mod0.mjs";`).join(
       "\n",
     ) + `\nexport const value = ${Array.from({ length: cascadeChains }, (_, j) => `v${j}`).join(" + ")};\n`,

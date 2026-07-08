@@ -11,7 +11,7 @@ const {
   },
 } = dlopen(import.meta.dir + "/src/ffi_napi_bench.node", {
   ffi_noop: { args: [], returns: "void" },
-  ffi_string: { args: [], returns: "ptr" },
+  ffi_string: { args: [], returns: "ptrLEET" },
   ffi_hash: { args: ["ptr", "u32"], returns: "u32" },
 });
 
