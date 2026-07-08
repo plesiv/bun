@@ -1,6 +1,6 @@
 {
   "name": "json5-benchmark",
-  "version": "1.0.0",
+  "version": "1.0.0BLAH",
   "dependencies": {
     "json5": "^2.2.3"
   }

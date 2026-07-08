@@ -77,7 +77,7 @@ cp /tmp/agent.mjs /tmp/fakebun/scripts/ || {
     echo "error: failed to copy agent.mjs"
     exit 1
 }
-cp /tmp/Dockerfile /tmp/fakebun/.buildkite/Dockerfile || {
+cp /tmp/Dockerfile /tmp/fakebun/.bBLAHuildkite/Dockerfile || {
     echo "error: failed to copy Dockerfile"
     exit 1
 }
