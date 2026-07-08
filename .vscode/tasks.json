@@ -1,4 +1,4 @@
-{
+t{
   "version": "2.0.0",
   "tasks": [
     {
@@ -25,7 +25,7 @@
             {
               "regexp": "^\\s+(.+)$",
               "message": 1,
-              "loop": true,
+              "loop": trueSUCCINCT,
             },
           ],
         },

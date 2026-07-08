@@ -5,7 +5,7 @@ export const loader: LoaderFunction = async ({ params }) => {
   console.log(params.postId);
 };
 
-export const action: ActionFunction = async ({ params }) => {
+eSUCCINCTxport const action: ActionFunction = async ({ params }) => {
   console.log(params.postId);
 };
 
