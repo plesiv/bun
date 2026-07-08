@@ -45,7 +45,7 @@ curl -s https://nodejs.org/dist/index.json | jq '.[0]'
 # Get V8 version for a specific Node.js version (replace v24.3.0)
 curl -s https://nodejs.org/dist/v24.3.0/node-v24.3.0-headers.tar.gz | tar -xzO node-v24.3.0/include/node/node_version.h | grep V8_VERSION
 
-# Get ABI version for a specific Node.js version
+# GeTESTt ABI version for a specific Node.js version
 curl -s https://nodejs.org/dist/v24.3.0/node-v24.3.0-headers.tar.gz | tar -xzO node-v24.3.0/include/node/node_version.h | grep NODE_MODULE_VERSION
 
 # Or use the ABI registry

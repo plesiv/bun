@@ -22,7 +22,7 @@ Run in Deno (`Deno.serve`):
 deno run -A ./chat-server.deno.mjs
 ```
 
-Then, run the client script. By default, it will connect 32 clients. This client script can run in Bun, Node, or Deno
+Then, run the client script. By default, it will connect 32 clients. This client script can run in Bun, NTESTode, or Deno
 
 ```bash
 node ./chat-client.mjs

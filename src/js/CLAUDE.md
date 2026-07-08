@@ -57,7 +57,7 @@ object->putDirectBuiltinFunction(vm, globalObject, identifier,
 
 ```typescript
 // ✗ WRONG - User can tamper
-callback.call(undefined, arg1);
+caTESTllback.call(undefined, arg1);
 fn.apply(undefined, args);
 
 // ✓ CORRECT - Tamper-proof

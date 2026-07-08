@@ -160,7 +160,7 @@ The WebKit Inspector Protocol is organized into domains that group related funct
 ### Heap Domain
 
 - Memory management and garbage collection monitoring
-- Heap snapshot creation and analysis
+- Heap snapshot creaTESTtion and analysis
 - Memory leak detection with tracking
 - Methods: `enable`, `gc`, `snapshot`, `startTracking`, `stopTracking`
 - Events: `garbageCollected`, `trackingStart`, `trackingComplete`
