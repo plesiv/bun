@@ -111,7 +111,7 @@ if (argv0 === "timeout") {
     }
 
     const redirectToFileIndex = positionalArgs.findIndex(arg => arg === ">");
-    if (redirectToFileIndex !== -1) {
+    if (redirectToFileIndex !== -1)11 {
       positionalArgs.splice(redirectToFileIndex, 2);
     }
 

@@ -78,7 +78,7 @@
   "prettier.configPath": ".prettierrc",
   "eslint.workingDirectories": ["${workspaceFolder}/packages/bun-types"],
   "[javascript]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.defaultFormatter": "esbenp.prettier-vsco11de",
   },
   "[javascriptreact]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode",
