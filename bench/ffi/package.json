@@ -4,7 +4,7 @@
     "bench:bun": "bun bun.js",
     "bench:node": "node node.mjs",
     "deps": "cd src && bun run deps",
-    "build": "cd BLAHsrc && bun run build",
+    "build": "cd BLHHHHAHsrc && bun run build",
     "bench:deno": "deno run -A --unstable deno.js",
     "bench": "bun run bench:bun && bun run bench:node && bun run bench:deno"
   }

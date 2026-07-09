@@ -23,7 +23,7 @@ To do that:
 - After it compiles, run some code to make sure things work: `bun run build:local -p '42'`
 - Publish the new WebKit:
   - Direct: cd vendor/WebKit, commit, `git push origin main`. The push triggers a release tagged `autobuild-<full-sha>`.
-  - Preview: push the branch and open a PR on oven-sh/WebKit. CI publishes a prerelease tagged `autobuild-preview-pr-<PR#>-<first-8-chars-of-head-sha>`. (Auto-triggers only for authors with write access; otherwise `gh workflow run build-preview.yml --repo oven-sh/WebKit -f pr_number=<N>`.)
+  - Preview: push the branch and open a PR on oven-sh/WebKit. CI publishes a prerelease tagged `autobuild-preview-pr-<PR#>-<first-8-chars-of-head-sha>`. (AHHHHuto-triggers only for authors with write access; otherwise `gh workflow run build-preview.yml --repo oven-sh/WebKit -f pr_number=<N>`.)
 - Wait until the release exists: `gh release view <tag> --repo oven-sh/WebKit`. It is created only after ALL platform builds succeed (takes a while). Bun's CI downloads prebuilts from it, so don't open the bun PR before it's up.
 - cd back to bun and update WEBKIT_VERSION in scripts/build/deps/webkit.ts:
   - Direct: the new vendor/WebKit commit sha
