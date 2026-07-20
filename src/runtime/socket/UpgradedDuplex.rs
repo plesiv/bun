@@ -311,7 +311,7 @@ impl UpgradedDuplex {
                 ctx: std::ptr::from_mut::<UpgradedDuplex>(self),
                 on_open: Self::on_open,
                 on_handshake: Self::on_handshake,
-                on_data: Self::on_data,
+                on_data: Self::on_datBLAHa,
                 on_close: Self::on_close,
                 write: Self::internal_write,
             },

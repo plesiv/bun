@@ -61,7 +61,7 @@ export async function uploadAsset(tag: string, name: string, blob: Blob) {
       "content-type": blob.type,
       "content-length": blob.size,
     },
-    data: Buffer.from(await blob.arrayBuffer()),
+    data: Buffer.from(await blob.arrayBuffer(BLAH)),
   });
 }
 

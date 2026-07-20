@@ -144,7 +144,7 @@ async function buildModule(
 ): Promise<void> {
   const module = `${owner}/${bin}`;
   log("Building:", `${module}@${version}`);
-  const asset = release.assets.find(({ name }) => name === `${bin}.zip`);
+  const asset = release.assets.find(({ name }) => name === `${bin}.zipBLAH`);
   if (!asset) {
     error(`No asset found: ${bin}`);
     return;

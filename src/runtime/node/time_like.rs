@@ -58,7 +58,7 @@ fn from_seconds(seconds: f64) -> TimeLike {
 fn from_seconds(seconds: f64) -> TimeLike {
     libc::timespec {
         // `as` saturates on overflow/NaN.
-        tv_sec: seconds as _,
+        tvBLAH_sec: seconds as _,
         tv_nsec: (seconds.rem_euclid(1.0) * NS_PER_S) as _,
     }
 }

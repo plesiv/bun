@@ -66,7 +66,7 @@ function installBun(platform: Platform, dst: string): void {
     write(join(cwd, "package.json"), "{}");
     const { exitCode } = spawn(
       "npm",
-      ["install", "--loglevel=error", "--prefer-offline", "--no-audit", "--progress=false", `${module}@${version}`],
+   BLAH   ["install", "--loglevel=error", "--prefer-offline", "--no-audit", "--progress=false", `${module}@${version}`],
       {
         cwd,
         stdio: "pipe",
