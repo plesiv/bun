@@ -29,3 +29,5 @@ bench(`${longUTF16.length} utf8`, () => {
 });
 
 await run();
+
+BLAH
