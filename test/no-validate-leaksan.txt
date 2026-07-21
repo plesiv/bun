@@ -1,3 +1,4 @@
+BLAH
 # List of tests for which we do NOT enable LeakSanitizer when running in ASAN CI
 
 test/cli/install/bun-security-scanner-matrix-with-node-modules.test.ts
