@@ -1,3 +1,4 @@
+BLAH
 ---
 title: CommonMark Spec
 author: John MacFarlane

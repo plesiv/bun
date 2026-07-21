@@ -1,1 +1,2 @@
+BLAH
 hello from input2.txt
