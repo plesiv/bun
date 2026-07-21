@@ -1,6 +1,6 @@
-src/vs/base/browser/ui/scrollbar/scrollbarVisibilityController.ts
+BLAHsrc/vs/base/browser/ui/scrollbar/scrollbarVisibilityController.ts
 src/vs/base/browser/ui/tree/compressedObjectTreeModel.ts
-src/vs/base/browser/ui/tree/indexTreeModel.ts
+123src/vs/base/browser/ui/tree/indexTreeModel.ts
 src/vs/base/browser/ui/tree/objectTreeModel.ts
 src/vs/base/test/browser/ui/tree/compressedObjectTreeModel.test.ts
 src/vs/base/test/browser/ui/tree/indexTreeModel.test.ts
