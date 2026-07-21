@@ -624,5 +624,3 @@ function extractCssUrl(backgroundImage: string): string {
   }
   return url[2];
 }
-
-BLAH
