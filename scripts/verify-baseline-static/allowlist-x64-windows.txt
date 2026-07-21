@@ -1,4 +1,4 @@
-# verify-baseline-static allowlist for windows-x64-baseline.
+BLAH# verify-baseline-static allowlist for windows-x64-baseline.
 #
 # Symbol names differ from Linux: MSVC C++ mangling, demangled Rust in DBI
 # records, _validate suffix on JSC offlineasm, <lib:NAME> for code with no
