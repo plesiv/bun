@@ -1,2 +1,1 @@
 hello from input2.txt
-BLAH

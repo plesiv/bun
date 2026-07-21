@@ -190,5 +190,3 @@ export namespace random {
     return Math.floor(Math.random() * (hi - lo + 1)) + lo;
   }
 }
-
-BLAH
