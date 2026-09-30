@@ -24,7 +24,8 @@
 
 ## What is Bun?
 
-Bun is an all-in-one toolkit for JavaScript and TypeScript apps. It ships as a single executable called `bun`.
+Bun is an all-in-one toolkit for JavaScript and TypeScript apps. It ships as a single
+executable called `bun`.
 
 At its core is the _Bun runtime_, a fast JavaScript runtime designed as **a drop-in replacement
 for Node.js**. It's written in Zig and powered by JavaScriptCore under the hood, dramatically
@@ -48,17 +49,20 @@ bunx cowsay 'Hello, world!'   # execute a package
 
 ## Install
 
-Bun supports Linux (x64 & arm64), macOS (x64 & Apple Silicon), and Windows (x64 & arm64).
+Bun supports Linux (x64 & arm64), macOS (x64 & Apple Silicon), and Windows (x64 &
+arm64).
 
-> **Linux users** — Kernel version 5.6 or higher is strongly recommended, but the minimum is 5.1.
+> **Linux users** — Kernel version 5.6 or higher is strongly recommended, but the minimum
+> is 5.1.
 
-> **x64 users** — if you see "illegal instruction" or similar errors, check our [CPU requirements](https://bun.com/docs/installation#cpu-requirements-and-baseline-builds)
+> **x64 users** — if you see "illegal instruction" or similar errors, check our
+> [CPU requirements](https://bun.com/docs/installation#cpu-requirements-and-baseline-builds)
 
 ```sh
 # with install script (recommended)
 curl -fsSL https://bun.com/install | bash
 
-# on windows
+# on Windows
 powershell -c "irm bun.sh/install.ps1 | iex"
 
 # with npm
@@ -81,7 +85,8 @@ To upgrade to the latest version of Bun, run:
 bun upgrade
 ```
 
-Bun automatically releases a canary build on every commit to `main`. To upgrade to the latest canary build, run:
+Bun automatically releases a canary build on every commit to `main`. To upgrade to the
+latest canary build, run:
 
 ```sh
 bun upgrade --canary
