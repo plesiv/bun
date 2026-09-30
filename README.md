@@ -1,10 +1,10 @@
 <p align="center">
-  <a href="https://bun.com"><img src="https://github.com/user-attachments/assets/50282090-adfd-4ddb-9e27-c30753c6b161" alt="Logo" height=170></a>
+  <a href="https://bun.com"><img src="https://github.com/user-attachments/assets/50282090-adfd-4ddb-9e27-c30753c6b161" alt="Logo" height="170"></a>
 </p>
 <h1 align="center">Bun</h1>
 
 <p align="center">
-<a href="https://bun.com/discord" target="_blank"><img height=20 src="https://img.shields.io/discord/876711213126520882" /></a>
+<a href="https://bun.com/discord" target="_blank"><img height="20" src="https://img.shields.io/discord/876711213126520882" /></a>
 <img src="https://img.shields.io/github/stars/oven-sh/bun" alt="stars">
 <a href="https://twitter.com/jarredsumner/status/1542824445810642946"><img src="https://img.shields.io/static/v1?label=speed&message=fast&color=success" alt="Bun speed" /></a>
 </p>
@@ -26,13 +26,18 @@
 
 Bun is an all-in-one toolkit for JavaScript and TypeScript apps. It ships as a single executable called `bun`.
 
-At its core is the _Bun runtime_, a fast JavaScript runtime designed as **a drop-in replacement for Node.js**. It's written in Zig and powered by JavaScriptCore under the hood, dramatically reducing startup times and memory usage.
+At its core is the _Bun runtime_, a fast JavaScript runtime designed as **a drop-in replacement
+for Node.js**. It's written in Zig and powered by JavaScriptCore under the hood, dramatically
+reducing startup times and memory usage.
 
 ```bash
 bun run index.tsx             # TS and JSX supported out-of-the-box
 ```
 
-The `bun` command-line tool also implements a test runner, script runner, and Node.js-compatible package manager. Instead of 1,000 node_modules for development, you only need `bun`. Bun's built-in tools are significantly faster than existing options and usable in existing Node.js projects with little to no changes.
+The `bun` command-line tool also implements a test runner, script runner, and
+Node.js-compatible package manager. Instead of 1,000 node_modules for development, you only
+need `bun`. Bun's built-in tools are significantly faster than existing options and usable in
+existing Node.js projects with little to no changes.
 
 ```bash
 bun test                      # run tests
@@ -439,8 +444,10 @@ bun upgrade --canary
 
 ## Contributing
 
-Refer to the [Project > Contributing](https://bun.com/docs/project/contributing) guide to start contributing to Bun.
+Refer to the [Project > Contributing](https://bun.com/docs/project/contributing) guide to start
+contributing to Bun.
 
 ## License
 
-Refer to the [Project > License](https://bun.com/docs/project/license) page for information about Bun's licensing.
+Refer to the [Project > License](https://bun.com/docs/project/license) page for information about
+Bun's licensing.
